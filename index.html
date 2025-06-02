@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel de Tareas</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <title>Panel de Tareas CEDEBA</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       background: #fff0f2;
       margin: 0;
       padding: 0;
@@ -21,34 +19,22 @@
       color: #fff;
       padding: 20px;
       text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .tabs {
       display: flex;
       justify-content: center;
       background-color: #fff5f6;
-      border-bottom: 1px solid #ddd;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .tabs button {
-      background-color: transparent;
+      background: transparent;
       color: #7b2d3b;
       border: none;
       padding: 14px 20px;
       cursor: pointer;
-      font-size: 16px;
-      border-bottom: 2px solid transparent;
-      transition: all 0.3s;
-    }
-    .tabs button:hover {
-      border-bottom: 2px solid #a94452;
-      color: #a94452;
-      background-color: #ffe6ea;
     }
     .tabs button.active {
-      border-bottom: 2px solid #a94452;
       font-weight: bold;
-      color: #a94452;
+      border-bottom: 2px solid #a94452;
     }
     .content {
       display: none;
@@ -63,9 +49,7 @@
       width: 100%;
       border-collapse: collapse;
       background: #fffafc;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       border-radius: 8px;
-      overflow: hidden;
       margin-bottom: 20px;
     }
     th, td {
@@ -73,144 +57,170 @@
       text-align: left;
       border-bottom: 1px solid #f3dce1;
     }
-    th {
-      background-color: #fce7eb;
-      font-weight: 600;
-      color: #7b2d3b;
-    }
-    select, input[type="text"] {
-      padding: 6px;
-      border-radius: 4px;
-      border: 1px solid #caa1ab;
-      background-color: #fff0f2;
-      width: 100%;
-      font-size: 14px;
-    }
-    input[type="text"]:focus, select:focus {
-      border-color: #a94452;
-      outline: none;
-      background-color: #ffe6ea;
-    }
     .add-task-btn {
       background-color: #b36f7d;
       color: white;
       border: none;
       padding: 10px 15px;
       border-radius: 5px;
-      font-size: 18px;
+      font-size: 16px;
       cursor: pointer;
       margin-bottom: 20px;
-    }
-    .add-task-btn:hover {
-      background-color: #9e5b69;
     }
     .delete-btn {
       background-color: #d9534f;
       color: white;
       border: none;
-      padding: 5px 10px;
+      padding: 6px 10px;
       border-radius: 4px;
       cursor: pointer;
-    }
-    .delete-btn:hover {
-      background-color: #c9302c;
-    }
-    .export-btn {
-      background-color: #5bc0de;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
-      margin: 20px auto;
-      display: block;
-    }
-    .export-btn:hover {
-      background-color: #31b0d5;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Panel de Tareas</h1>
-  </header>
+  <header><h1>Panel de Tareas CEDEBA</h1></header>
   <div class="tabs" id="tabContainer"></div>
   <div id="contentContainer"></div>
-  <button class="export-btn" onclick="exportToExcel()">Exportar a Excel</button>
-  
-  
-  <script>
 
-    
-    const data = {
-      "Marina": [],
-      "Carolina": [],
-      "Lorena": [],
-      "Lara": [],
-      "Patricia": []
+  <script>
+    // CONFIGURACIÓN DE FIREBASE
+    const firebaseConfig = {
+      apiKey: "AIzaSyDBkMLx1znAqBo5rrs2R3f95Kdo6_qvq6U",
+      authDomain: "cedeba-d4dc0.firebaseapp.com",
+      databaseURL: "https://cedeba-d4dc0-default-rtdb.firebaseio.com",
+      projectId: "cedeba-d4dc0",
+      storageBucket: "cedeba-d4dc0.firebasestorage.app",
+      messagingSenderId: "197871843000",
+      appId: "1:197871843000:web:84e3465be2c32ad224a64d"
     };
 
-    let currentSecretaria = Object.keys(data)[0];
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const tabContainer = document.getElementById('tabContainer');
-    const contentContainer = document.getElementById('contentContainer');
+    const secretarias = ["Marina", "Carolina", "Lorena", "Lara", "Patricia"];
+    let currentSecretaria = secretarias[0];
 
-    function saveToLocalStorage() {
-      localStorage.setItem('tareasSecretarias', JSON.stringify(data));
-    }
-
-    function loadFromLocalStorage() {
-      const saved = localStorage.getItem('tareasSecretarias');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        for (const key of Object.keys(data)) {
-          if (parsed[key]) data[key] = parsed[key];
-        }
-      }
-    }
+    const tabContainer = document.getElementById("tabContainer");
+    const contentContainer = document.getElementById("contentContainer");
 
     function renderTabs() {
-      tabContainer.innerHTML = '';
-      Object.keys(data).forEach((key, index) => {
-        const btn = document.createElement('button');
-        btn.textContent = key;
-        if (index === 0) btn.classList.add('active');
+      tabContainer.innerHTML = "";
+      secretarias.forEach((nombre, index) => {
+        const btn = document.createElement("button");
+        btn.textContent = nombre;
+        if (index === 0) btn.classList.add("active");
         btn.onclick = () => {
-          currentSecretaria = key;
+          currentSecretaria = nombre;
           switchTab(index);
-          renderContent();
+          loadTareas(nombre);
         };
         tabContainer.appendChild(btn);
       });
     }
 
-    function renderContent() {
-      contentContainer.innerHTML = '';
-      const tareas = data[currentSecretaria];
+    function switchTab(index) {
+      document.querySelectorAll(".tabs button").forEach((btn, i) => {
+        btn.classList.toggle("active", i === index);
+      });
+    }
 
-      const div = document.createElement('div');
-      div.className = 'content active';
+    function loadTareas(secretaria) {
+      db.ref("tareas/" + secretaria).once("value", (snapshot) => {
+        const tareas = snapshot.val() || [];
+        renderContent(secretaria, tareas);
+      });
+    }
 
-      const table = document.createElement('table');
-      const thead = document.createElement('thead');
-      thead.innerHTML = '<tr><th>TAREA</th><th>ESTADO</th><th>OBSERVACIONES</th><th></th></tr>';
+    function saveTareas(secretaria, tareas) {
+      db.ref("tareas/" + secretaria).set(tareas);
+    }
+
+    function renderContent(secretaria, tareas) {
+      contentContainer.innerHTML = "";
+      const div = document.createElement("div");
+      div.className = "content active";
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      thead.innerHTML =
+        "<tr><th>TAREA</th><th>ESTADO</th><th>OBSERVACIONES</th><th></th></tr>";
       table.appendChild(thead);
 
-      const tbody = document.createElement('tbody');
-      tareas.forEach((tarea, i) => {
-        const row = createRow(currentSecretaria, i);
-        tbody.appendChild(row);
-      });
+      const tbody = document.createElement("tbody");
+
+      if (tareas.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td colspan="4" style="text-align:center; color:#888;">Sin tareas registradas</td>';
+        tbody.appendChild(tr);
+      } else {
+        tareas.forEach((tarea, i) => {
+          const tr = document.createElement("tr");
+
+          const tareaTd = document.createElement("td");
+          const tareaInput = document.createElement("input");
+          tareaInput.type = "text";
+          tareaInput.value = tarea.tarea;
+          tareaInput.oninput = (e) => {
+            tareas[i].tarea = e.target.value;
+            saveTareas(secretaria, tareas);
+          };
+          tareaTd.appendChild(tareaInput);
+
+          const estadoTd = document.createElement("td");
+          const estadoSelect = document.createElement("select");
+          ["PENDIENTE", "FINALIZADO"].forEach((op) => {
+            const option = document.createElement("option");
+            option.value = op;
+            option.textContent = op;
+            if (tarea.estado === op) option.selected = true;
+            estadoSelect.appendChild(option);
+          });
+          estadoSelect.onchange = (e) => {
+            tareas[i].estado = e.target.value;
+            saveTareas(secretaria, tareas);
+          };
+          estadoTd.appendChild(estadoSelect);
+
+          const obsTd = document.createElement("td");
+          const obsInput = document.createElement("input");
+          obsInput.type = "text";
+          obsInput.value = tarea.observaciones;
+          obsInput.oninput = (e) => {
+            tareas[i].observaciones = e.target.value;
+            saveTareas(secretaria, tareas);
+          };
+          obsTd.appendChild(obsInput);
+
+          const delTd = document.createElement("td");
+          const delBtn = document.createElement("button");
+          delBtn.className = "delete-btn";
+          delBtn.textContent = "Eliminar";
+          delBtn.onclick = () => {
+            tareas.splice(i, 1);
+            saveTareas(secretaria, tareas);
+            renderContent(secretaria, tareas);
+          };
+          delTd.appendChild(delBtn);
+
+          tr.append(tareaTd, estadoTd, obsTd, delTd);
+          tbody.appendChild(tr);
+        });
+      }
+
       table.appendChild(tbody);
 
-      const addBtn = document.createElement('button');
-      addBtn.textContent = '+ Agregar Tarea';
-      addBtn.className = 'add-task-btn';
+      const addBtn = document.createElement("button");
+      addBtn.textContent = "+ Agregar Tarea";
+      addBtn.className = "add-task-btn";
       addBtn.onclick = () => {
-        data[currentSecretaria].push({ tarea: '', estado: 'PENDIENTE', observaciones: '' });
-        saveToLocalStorage();
-        renderContent();
+        tareas.push({
+          tarea: "",
+          estado: "PENDIENTE",
+          observaciones: ""
+        });
+        saveTareas(secretaria, tareas);
+        renderContent(secretaria, tareas);
       };
 
       div.appendChild(addBtn);
@@ -218,78 +228,8 @@
       contentContainer.appendChild(div);
     }
 
-    function createRow(secretaria, i) {
-      const tarea = data[secretaria][i];
-      const tr = document.createElement('tr');
-
-      const tareaTd = document.createElement('td');
-      const tareaInput = document.createElement('input');
-      tareaInput.type = 'text';
-      tareaInput.value = tarea.tarea;
-      tareaInput.oninput = e => {
-        data[secretaria][i].tarea = e.target.value;
-        saveToLocalStorage();
-      };
-      tareaTd.appendChild(tareaInput);
-
-      const estadoTd = document.createElement('td');
-      const estadoSelect = document.createElement('select');
-      ['PENDIENTE', 'FINALIZADO'].forEach(op => {
-        const option = document.createElement('option');
-        option.value = op;
-        option.textContent = op;
-        if (tarea.estado === op) option.selected = true;
-        estadoSelect.appendChild(option);
-      });
-      estadoSelect.onchange = e => {
-        data[secretaria][i].estado = e.target.value;
-        saveToLocalStorage();
-      };
-      estadoTd.appendChild(estadoSelect);
-
-      const obsTd = document.createElement('td');
-      const obsInput = document.createElement('input');
-      obsInput.type = 'text';
-      obsInput.value = tarea.observaciones;
-      obsInput.oninput = e => {
-        data[secretaria][i].observaciones = e.target.value;
-        saveToLocalStorage();
-      };
-      obsTd.appendChild(obsInput);
-
-      const delTd = document.createElement('td');
-      const delBtn = document.createElement('button');
-      delBtn.className = 'delete-btn';
-      delBtn.textContent = 'Eliminar';
-      delBtn.onclick = () => {
-        data[secretaria].splice(i, 1);
-        saveToLocalStorage();
-        renderContent();
-      };
-      delTd.appendChild(delBtn);
-
-      tr.append(tareaTd, estadoTd, obsTd, delTd);
-      return tr;
-    }
-
-    function switchTab(index) {
-      document.querySelectorAll('.tabs button').forEach((btn, i) => {
-        btn.classList.toggle('active', i === index);
-      });
-    }
-
-    function exportToExcel() {
-      const wb = XLSX.utils.book_new();
-      Object.entries(data).forEach(([sheetName, tareas]) => {
-        const ws = XLSX.utils.json_to_sheet(tareas);
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-      });
-      XLSX.writeFile(wb, 'tareas_secretarias.xlsx');
-    }
-
-    loadFromLocalStorage();
     renderTabs();
-    renderContent();
+    loadTareas(currentSecretaria);
   </script>
 </body>
 </html>
